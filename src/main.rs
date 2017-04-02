@@ -139,29 +139,26 @@ fn main() {
 
     let done = Arc::new(AtomicBool::new(false));
     let pats: Vec<String> = env::args().collect();
-    let mut threads = Vec::with_capacity(procs);
     let now = Instant::now();
 
-    for _ in 0..procs {
+    let threads: Vec<_> = (0..procs).map(|_| {
         let done = done.clone();
         let pats = pats.clone();
 
-        threads.push(
-            thread::spawn(move || {
-                let mut n: u64 = 0;
+        thread::spawn(move || {
+            let mut n: u64 = 0;
 
-                while !done.load(Ordering::Relaxed) {
-                    if let Some(m) = try(&pats) {
-                        println!("#{} => {}", m.pass, m.trip);
-                    }
-
-                    n += 1;
+            while !done.load(Ordering::Relaxed) {
+                if let Some(m) = try(&pats) {
+                    println!("#{} => {}", m.pass, m.trip);
                 }
 
-                n
-            })
-        );
-    }
+                n += 1;
+            }
+
+            n
+        })
+    }).collect();
 
     io::stdin().bytes().next();
     done.store(true, Ordering::Relaxed);

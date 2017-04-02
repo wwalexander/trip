@@ -1,7 +1,6 @@
 [package]
 name = "trip"
 version = "0.1.0"
-# TODO: Add GitHub email
 authors = ["Will Alexander <wwalexander@users.noreply.github.com>"]
 license = "MIT/Apache-2.0"
 

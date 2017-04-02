@@ -139,7 +139,7 @@ fn main() {
 
     let done = Arc::new(AtomicBool::new(false));
     let pats: Vec<String> = env::args().collect();
-    let mut threads = Vec::with_capacity(8);
+    let mut threads = Vec::with_capacity(procs);
     let now = Instant::now();
 
     for _ in 0..procs {

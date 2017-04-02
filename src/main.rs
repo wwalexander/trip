@@ -165,12 +165,8 @@ fn main() {
 
     io::stdin().bytes().next();
     done.store(true, Ordering::Relaxed);
-    let mut n = 0;
 
-    for t in threads {
-        n += t.join().unwrap();
-    }
-
+    let n = threads.into_iter().fold(0, |acc, t| acc + t.join().unwrap());
     let tps = n / now.elapsed().as_secs();
     println!("{} tripcodes/second", tps);
 }

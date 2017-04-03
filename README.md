@@ -11,7 +11,7 @@ Building
 Usage
 -----
 
-    trip [pattern]
+    trip [pattern]...
 
 trip finds 2channel-style tripcodes that contain any of the patterns given as
 arguments. If a tripcode containing a pattern is found, trip will print the

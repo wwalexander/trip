@@ -72,11 +72,9 @@ fn main() {
                     .map(salt_replace)
                     .collect();
 
-                if let Some(t) = crypt::crypt(&pass, &salt) {
-                    if let Ok(t) = str::from_utf8(&t) {
-                        if pats.iter().any(|p| t.contains(p.as_str())) {
-                            println!("#{} => {}", pass, t);
-                        }
+                if let Ok(t) = str::from_utf8(&crypt::crypt(&pass, &salt)) {
+                    if pats.iter().any(|p| t.contains(p.as_str())) {
+                        println!("#{} => {}", pass, t);
                     }
                 }
 

@@ -566,14 +566,16 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
+/*
 fn ascii_is_unsafe(ch: u8) -> bool {
     match ch {
         0 | 0x0a | 0x3a => true,
         _ => false,
     }
 }
+*/
 
-pub fn crypt(key: &str, salt: &str) -> Option<[u8; N]> {
+pub fn crypt(key: &str, salt: &str) -> [u8; N] {
     let mut keybuf = [0u8; 8];
 
     for (i, val) in key.bytes().take(keybuf.len()).enumerate() {
@@ -644,9 +646,9 @@ pub fn crypt(key: &str, salt: &str) -> Option<[u8; N]> {
 
     let setting = salt.as_bytes();
 
-    if ascii_is_unsafe(setting[0]) || ascii_is_unsafe(setting[1]) {
+    /*if ascii_is_unsafe(setting[0]) || ascii_is_unsafe(setting[1]) {
         return None
-    }
+    }*/
 
     let salt = ascii_to_bin(setting[1] as i32) << 6 | ascii_to_bin(setting[0] as i32);
     let mut output = [0u8; N];
@@ -739,10 +741,23 @@ pub fn crypt(key: &str, salt: &str) -> Option<[u8; N]> {
     output[10] = ASCII64[l >> 12 & 0x3f];
     output[11] = ASCII64[l >> 6 & 0x3f];
     output[12] = ASCII64[l & 0x3f];
-    Some(output)
+    output
 }
 
-#[bench]
-fn bench_crypt(b: &mut Bencher) {
-    b.iter(|| crypt("foo", "oo"));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str;
+
+    #[test]
+    fn test_crypt() {
+        let s = crypt("foo", "oo");
+        let s = str::from_utf8(&s).unwrap();
+        assert_eq!("oov2bgybBZ7HI", s);
+    }
+
+    #[bench]
+    fn bench_crypt(b: &mut Bencher) {
+        b.iter(|| crypt("foo", "oo"));
+    }
 }

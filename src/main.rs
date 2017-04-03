@@ -83,9 +83,12 @@ fn main() {
 
     io::stdin().bytes().next();
     done.store(true, Ordering::Relaxed);
-    let n = threads
+
+    let n: u64 = threads
         .into_iter()
-        .fold(0, |acc, t| acc + t.join().unwrap());
+        .map(|t| t.join().unwrap())
+        .sum();
+
     let tps = n / now.elapsed().as_secs();
     println!("{} tripcodes/second", tps);
 }

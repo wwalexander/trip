@@ -360,7 +360,6 @@ pub fn crypt(key: &str, salt: &str) -> Option<String> {
               KEY_PERM_MASKL[i + 4][rawkey1 as usize >> ibit & 0xf];
 
         k1 |= KEY_PERM_MASKR[j][rawkey0 as usize >> ibit & 0xf];
-
         ibit -= 4;
 
         k1 |= KEY_PERM_MASKR[j + 1][rawkey0 as usize >> ibit & 0xf] |

@@ -331,7 +331,7 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
-pub fn crypt(key: &str, salt: &str) -> Option<String> {
+pub fn crypt(key: &str, salt: &str) -> String {
     let mut keybuf = [0u8; 8];
 
     for (i, val) in key.bytes().take(keybuf.len()).enumerate() {
@@ -471,21 +471,17 @@ pub fn crypt(key: &str, salt: &str) -> Option<String> {
     output[10] = ASCII64[l >> 12 & 0x3f];
     output[11] = ASCII64[l >> 6 & 0x3f];
     output[12] = ASCII64[l & 0x3f];
-
-    str::from_utf8(&output)
-        .ok()
-        .and_then(|o| Some(o.to_string()))
+    str::from_utf8(&output).unwrap().to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str;
     use test::Bencher;
 
     #[test]
     fn test_crypt() {
-        assert_eq!("oov2bgybBZ7HI", crypt("foo", "oo").unwrap());
+        assert_eq!("oov2bgybBZ7HI", crypt("foo", "oo"));
     }
 
     #[bench]

@@ -5,12 +5,7 @@ extern crate rand;
 
 use rand::Rng;
 use std::env;
-use std::io;
-use std::io::Read;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::Instant;
 
 mod crypt;
 
@@ -38,6 +33,32 @@ fn salt_replace(c: char) -> char {
     }
 }
 
+struct Match {
+    pass: String,
+    trip: String,
+}
+
+fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
+    let pass: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
+
+    let salt: String = pass.chars()
+        .chain("H.".chars())
+        .skip(1)
+        .take(2)
+        .map(salt_replace)
+        .collect();
+
+    let trip = crypt::crypt(&pass, &salt);
+
+    pats.find(|p| trip.contains(p.as_str()))
+        .and_then(|_| {
+                      Some(Match {
+                               pass: pass,
+                               trip: trip,
+                           })
+                  })
+}
+
 fn main() {
     let procs = if let Ok(v) = env::var("PROCS") {
         v.parse().unwrap()
@@ -45,50 +66,25 @@ fn main() {
         1
     };
 
-    let done = Arc::new(AtomicBool::new(false));
-    let pats: Vec<String> = env::args().collect();
-    let now = Instant::now();
+    for t in (0..procs).map(|_| {
+                                thread::spawn(move || loop {
+                                                  if let Some(m) = try(env::args()) {
+                                                      println!("#{} => {}", m.pass, m.trip);
+                                                  }
+                                              })
+                            }) {
+        t.join().unwrap();
+    }
+}
 
-    let threads: Vec<_> = (0..procs)
-        .map(|_| {
-            let done = done.clone();
-            let pats = pats.clone();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::iter;
+    use test::Bencher;
 
-            thread::spawn(move || {
-                let mut n: u64 = 0;
-
-                while !done.load(Ordering::Relaxed) {
-                    let pass: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
-
-                    let salt: String = pass.chars()
-                        .chain("H.".chars())
-                        .skip(1)
-                        .take(2)
-                        .map(salt_replace)
-                        .collect();
-
-                    if let Some(t) = crypt::crypt(&pass, &salt) {
-                        if pats.iter().any(|p| t.contains(p.as_str())) {
-                            println!("#{} => {}", pass, t);
-                        }
-                    }
-
-                    n += 1;
-                }
-
-                n
-            })
-        })
-        .collect();
-
-    io::stdin().bytes().next();
-    done.store(true, Ordering::Relaxed);
-
-    let n: u64 = threads
-        .into_iter()
-        .map(|t| t.join().unwrap())
-        .sum();
-
-    let tps = n / now.elapsed().as_secs();
-    println!("{} tripcodes/second", tps);
+    #[bench]
+    fn bench_try(b: &mut Bencher) {
+        b.iter(|| try(iter::once("foo".to_string())))
+    }
 }

@@ -15,6 +15,6 @@ Usage
 
 trip finds 2channel-style tripcodes that contain any of the pattern given as
 arguments. If a tripcode containing a pattern is found, trip will print the
-password and the tripcode it generates. trip will search for tripcodes
-until a key is pressed, at which point it will terminate and print the average
-number of tripcodes generated per second.
+password and the tripcode it generates. By default, trip will only use one
+processor. The number of processors to use can be set using the PROCS
+environment variable.

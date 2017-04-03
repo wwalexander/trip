@@ -7,7 +7,6 @@ use rand::Rng;
 use std::env;
 use std::io;
 use std::io::Read;
-use std::str;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -72,7 +71,7 @@ fn main() {
                     .map(salt_replace)
                     .collect();
 
-                if let Ok(t) = str::from_utf8(&crypt::crypt(&pass, &salt)) {
+                if let Some(t) = crypt::crypt(&pass, &salt) {
                     if pats.iter().any(|p| t.contains(p.as_str())) {
                         println!("#{} => {}", pass, t);
                     }

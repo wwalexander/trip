@@ -54,13 +54,12 @@
  */
 
 use std::num::Wrapping;
+use std::str;
 
 struct ExpandedKey {
     l: [u32; 16],
     r: [u32; 16],
 }
-
-pub const N: usize = 13;
 
 const KEY_SHIFTS: [u8; 16] = [
     1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
@@ -565,7 +564,7 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
-pub fn crypt(key: &str, salt: &str) -> [u8; N] {
+pub fn crypt(key: &str, salt: &str) -> Option<String> {
     let mut keybuf = [0u8; 8];
 
     for (i, val) in key.bytes().take(keybuf.len()).enumerate() {
@@ -636,7 +635,7 @@ pub fn crypt(key: &str, salt: &str) -> [u8; N] {
 
     let setting = salt.as_bytes();
     let salt = ascii_to_bin(setting[1] as i32) << 6 | ascii_to_bin(setting[0] as i32);
-    let mut output = [0u8; N];
+    let mut output = [0u8; 13];
     output[0] = setting[0];
     output[1] = setting[1];
     let mut saltbits = 0u32;
@@ -726,19 +725,21 @@ pub fn crypt(key: &str, salt: &str) -> [u8; N] {
     output[10] = ASCII64[l >> 12 & 0x3f];
     output[11] = ASCII64[l >> 6 & 0x3f];
     output[12] = ASCII64[l & 0x3f];
-    output
+
+    str::from_utf8(&output)
+        .ok()
+        .and_then(|o| Some(o.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::str;
+    use test::Bencher;
 
     #[test]
     fn test_crypt() {
-        let s = crypt("foo", "oo");
-        let s = str::from_utf8(&s).unwrap();
-        assert_eq!("oov2bgybBZ7HI", s);
+        assert_eq!("oov2bgybBZ7HI", crypt("foo", "oo").unwrap());
     }
 
     #[bench]

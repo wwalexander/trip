@@ -54,6 +54,7 @@
  */
 
 use std::num::Wrapping;
+use test::Bencher;
 
 struct ExpandedKey {
     l: [u32; 16],
@@ -739,4 +740,9 @@ pub fn crypt(key: &str, salt: &str) -> Option<[u8; N]> {
     output[11] = ASCII64[l >> 6 & 0x3f];
     output[12] = ASCII64[l & 0x3f];
     Some(output)
+}
+
+#[bench]
+fn bench_crypt(b: &mut Bencher) {
+    b.iter(|| crypt("foo", "oo"));
 }

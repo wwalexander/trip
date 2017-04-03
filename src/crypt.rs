@@ -566,15 +566,6 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
-/*
-fn ascii_is_unsafe(ch: u8) -> bool {
-    match ch {
-        0 | 0x0a | 0x3a => true,
-        _ => false,
-    }
-}
-*/
-
 pub fn crypt(key: &str, salt: &str) -> [u8; N] {
     let mut keybuf = [0u8; 8];
 
@@ -645,11 +636,6 @@ pub fn crypt(key: &str, salt: &str) -> [u8; N] {
     }
 
     let setting = salt.as_bytes();
-
-    /*if ascii_is_unsafe(setting[0]) || ascii_is_unsafe(setting[1]) {
-        return None
-    }*/
-
     let salt = ascii_to_bin(setting[1] as i32) << 6 | ascii_to_bin(setting[0] as i32);
     let mut output = [0u8; N];
     output[0] = setting[0];

@@ -60,11 +60,10 @@ fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
 }
 
 fn main() {
-    let procs = if let Ok(v) = env::var("PROCS") {
-        v.parse().unwrap()
-    } else {
-        1
-    };
+    let procs = env::var("PROCS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
 
     for t in (0..procs).map(|_| {
                                 thread::spawn(move || loop {

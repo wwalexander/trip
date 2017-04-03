@@ -54,7 +54,6 @@
  */
 
 use std::num::Wrapping;
-use test::Bencher;
 
 struct ExpandedKey {
     l: [u32; 16],

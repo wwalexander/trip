@@ -453,11 +453,8 @@ pub fn crypt(key: &str, salt: &str) -> Option<String> {
 
     for i in 0usize..4 {
         r1 |= FP_MASKR[i][l as usize >> ibit & 0xf] | FP_MASKR[i + 4][r as usize >> ibit & 0xf];
-
         ibit -= 4;
-
         r0 |= FP_MASKL[i][l as usize >> ibit & 0xf] | FP_MASKL[i + 4][r as usize >> ibit & 0xf];
-
         ibit = (Wrapping(ibit) - Wrapping(4)).0;
     }
 

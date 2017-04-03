@@ -7,6 +7,7 @@ use rand::Rng;
 use std::env;
 use std::io;
 use std::io::Read;
+use std::str;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -96,40 +97,6 @@ fn salt_replace(c: char) -> char {
     }
 }
 
-fn trip(pass: &str) -> Option<String> {
-    let salt: String = pass.chars()
-        .chain("H.".chars())
-        .skip(1)
-        .take(2)
-        .map(salt_replace)
-        .collect();
-
-    crypt::crypt(pass, &salt)
-}
-
-struct Match {
-    pass: String,
-    trip: String,
-}
-
-fn try(pats: &[String]) -> Option<Match> {
-    let pass: String = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(9)
-            .collect();
-
-    trip(&pass).and_then(|t| {
-        if pats.iter().any(|p| t.contains(p.as_str())) {
-            Some(Match {
-                pass: pass,
-                trip: t,
-            })
-        } else {
-            None
-        }
-    })
-}
-
 fn main() {
     let procs = if let Ok(v) = env::var("PROCS") {
         v.parse().unwrap()
@@ -149,8 +116,24 @@ fn main() {
             let mut n: u64 = 0;
 
             while !done.load(Ordering::Relaxed) {
-                if let Some(m) = try(&pats) {
-                    println!("#{} => {}", m.pass, m.trip);
+                let pass: String = rand::thread_rng()
+                    .gen_ascii_chars()
+                    .take(9)
+                    .collect();
+
+                let salt: String = pass.chars()
+                    .chain("H.".chars())
+                    .skip(1)
+                    .take(2)
+                    .map(salt_replace)
+                    .collect();
+
+                if let Some(t) = crypt::crypt(&pass, &salt) {
+                    if let Ok(t) = str::from_utf8(&t) {
+                        if pats.iter().any(|p| t.contains(p.as_str())) {
+                            println!("#{} => {}", pass, t);
+                        }
+                    }
                 }
 
                 n += 1;
@@ -165,21 +148,4 @@ fn main() {
     let n = threads.into_iter().fold(0, |acc, t| acc + t.join().unwrap());
     let tps = n / now.elapsed().as_secs();
     println!("{} tripcodes/second", tps);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use test::Bencher;
-
-    #[bench]
-    fn bench_trip(b: &mut Bencher) {
-        b.iter(|| trip("foo"));
-    }
-
-    #[bench]
-    fn bench_try(b: &mut Bencher) {
-        let pats = vec![String::from("foo")];
-        b.iter(|| try(&pats));
-    }
 }

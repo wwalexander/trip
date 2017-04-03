@@ -60,6 +60,8 @@ struct ExpandedKey {
     r: [u32; 16],
 }
 
+pub const N: usize = 13;
+
 const KEY_SHIFTS: [u8; 16] = [
     1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1,
 ];
@@ -570,7 +572,7 @@ fn ascii_is_unsafe(ch: u8) -> bool {
     }
 }
 
-pub fn crypt(key: &str, salt: &str) -> Option<String> {
+pub fn crypt(key: &str, salt: &str) -> Option<[u8; N]> {
     let mut keybuf = [0u8; 8];
 
     for (i, val) in key.bytes().take(keybuf.len()).enumerate() {
@@ -646,7 +648,7 @@ pub fn crypt(key: &str, salt: &str) -> Option<String> {
     }
 
     let salt = ascii_to_bin(setting[1] as i32) << 6 | ascii_to_bin(setting[0] as i32);
-    let mut output = [0u8; 13];
+    let mut output = [0u8; N];
     output[0] = setting[0];
     output[1] = setting[1];
     let mut saltbits = 0u32;
@@ -736,5 +738,5 @@ pub fn crypt(key: &str, salt: &str) -> Option<String> {
     output[10] = ASCII64[l >> 12 & 0x3f];
     output[11] = ASCII64[l >> 6 & 0x3f];
     output[12] = ASCII64[l & 0x3f];
-    String::from_utf8((&output).to_vec()).ok()
+    Some(output)
 }

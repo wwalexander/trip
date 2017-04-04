@@ -60,7 +60,7 @@ fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
 }
 
 fn main() {
-    let procs = env::var("PROCS")
+    let procs = env::var("NUMBER_OF_PROCESSORS")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);

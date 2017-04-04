@@ -1,6 +1,6 @@
 [package]
 name = "trip"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Will Alexander <wwalexander@users.noreply.github.com>"]
 description = "Finds tripcodes that contain patterns"
 repository = "https://github.com/wwalexander/trip"

@@ -1,8 +1,11 @@
 [package]
 name = "trip"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Will Alexander <wwalexander@users.noreply.github.com>"]
-description = "Finds tripcodes that contain patterns."
+description = "Finds tripcodes that contain patterns"
+repository = "https://github.com/wwalexander/trip"
+readme = "README.md"
+categories = ["command-line-interface", "command-line-utilities", "cryptography"]
 license = "MIT/Apache-2.0"
 
 [dependencies]

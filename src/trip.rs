@@ -331,10 +331,10 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
-pub fn crypt(key: &str, salt: &str) -> String {
+pub fn trip(passwd: &str) -> String {
     let mut keybuf = [0u8; 8];
 
-    for (i, val) in key.bytes().take(keybuf.len()).enumerate() {
+    for (i, val) in passwd.bytes().take(keybuf.len()).enumerate() {
         keybuf[i] = val << 1;
     }
 
@@ -393,11 +393,35 @@ pub fn crypt(key: &str, salt: &str) -> String {
         ekey.r[round] = kr;
     }
 
-    let setting = salt.as_bytes();
-    let salt = ascii_to_bin(setting[1] as i32) << 6 | ascii_to_bin(setting[0] as i32);
-    let mut output = [0u8; 13];
-    output[0] = setting[0];
-    output[1] = setting[1];
+    let mut salt_chars = passwd
+        .chars()
+        .chain("H.".chars())
+        .skip(1)
+        .map(|c| match c {
+                 '/' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'A' | 'B' |
+                 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' |
+                 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' |
+                 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' |
+                 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' => c,
+                 ':' => 'A',
+                 ';' => 'B',
+                 '<' => 'C',
+                 '=' => 'D',
+                 '>' => 'E',
+                 '?' => 'F',
+                 '@' => 'G',
+                 '[' => 'a',
+                 '\\' => 'b',
+                 ']' => 'c',
+                 '^' => 'd',
+                 '_' => 'e',
+                 '`' => 'f',
+                 _ => '.',
+             });
+
+    let setting0 = salt_chars.next().unwrap();
+    let setting1 = salt_chars.next().unwrap();
+    let salt = ascii_to_bin(setting1 as i32) << 6 | ascii_to_bin(setting0 as i32);
     let mut saltbits = 0u32;
     let mut saltbit = 1u32;
     let mut obit = 0x800000;
@@ -457,20 +481,20 @@ pub fn crypt(key: &str, salt: &str) -> String {
         ibit = (Wrapping(ibit) - Wrapping(4)).0;
     }
 
+    let mut output = [0u8; 10];
     let l = (r0 as usize) >> 8;
-    output[2] = ASCII64[l >> 18 & 0x3f];
-    output[3] = ASCII64[l >> 12 & 0x3f];
-    output[4] = ASCII64[l >> 6 & 0x3f];
-    output[5] = ASCII64[l & 0x3f];
+    output[0] = ASCII64[l >> 12 & 0x3f];
+    output[1] = ASCII64[l >> 6 & 0x3f];
+    output[2] = ASCII64[l & 0x3f];
     let l = ((r0 as usize) << 16) | ((r1 as usize) >> 16 & 0xffff);
-    output[6] = ASCII64[l >> 18 & 0x3f];
+    output[3] = ASCII64[l >> 18 & 0x3f];
+    output[4] = ASCII64[l >> 12 & 0x3f];
+    output[5] = ASCII64[l >> 6 & 0x3f];
+    output[6] = ASCII64[l & 0x3f];
+    let l = (r1 as usize) << 2;
     output[7] = ASCII64[l >> 12 & 0x3f];
     output[8] = ASCII64[l >> 6 & 0x3f];
     output[9] = ASCII64[l & 0x3f];
-    let l = (r1 as usize) << 2;
-    output[10] = ASCII64[l >> 12 & 0x3f];
-    output[11] = ASCII64[l >> 6 & 0x3f];
-    output[12] = ASCII64[l & 0x3f];
     str::from_utf8(&output).unwrap().to_string()
 }
 
@@ -481,16 +505,16 @@ mod tests {
 
     #[test]
     fn matches_unix() {
-        assert_eq!("oov2bgybBZ7HI", crypt("foo", "oo"));
+        assert_eq!("2bgybBZ7HI", trip("foo"));
     }
 
     #[test]
     fn eight_sig_chars() {
-        assert_eq!(crypt("foofoofo", "oo"), crypt("foofoofoo", "oo"));
+        assert_eq!(trip("foofoofo"), trip("foofoofoo"));
     }
 
     #[bench]
-    fn bench_crypt(b: &mut Bencher) {
-        b.iter(|| crypt("foo", "oo"));
+    fn bench_trip(b: &mut Bencher) {
+        b.iter(|| trip("foofoofo"));
     }
 }

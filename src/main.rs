@@ -34,26 +34,26 @@ fn salt_replace(c: char) -> char {
 }
 
 struct Match {
-    pass: String,
+    passwd: String,
     trip: String,
 }
 
 fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
-    let pass: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
+    let passwd: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
 
-    let salt: String = pass.chars()
+    let salt: String = passwd.chars()
         .chain("H.".chars())
         .skip(1)
         .take(2)
         .map(salt_replace)
         .collect();
 
-    let trip = crypt::crypt(&pass, &salt);
+    let trip = crypt::crypt(&passwd, &salt);
 
     pats.find(|p| trip.contains(p.as_str()))
         .and_then(|_| {
                       Some(Match {
-                               pass: pass,
+                               passwd: passwd,
                                trip: trip,
                            })
                   })
@@ -68,7 +68,7 @@ fn main() {
     for t in (0..procs).map(|_| {
                                 thread::spawn(move || loop {
                                                   if let Some(m) = try(env::args()) {
-                                                      println!("#{} => {}", m.pass, m.trip);
+                                                      println!("#{} => {}", m.passwd, m.trip);
                                                   }
                                               })
                             }) {

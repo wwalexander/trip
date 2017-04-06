@@ -39,7 +39,7 @@ struct Match {
 }
 
 fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
-    let passwd: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
+    let passwd: String = rand::thread_rng().gen_ascii_chars().take(8).collect();
 
     let salt: String = passwd
         .chars()

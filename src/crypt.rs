@@ -480,8 +480,13 @@ mod tests {
     use test::Bencher;
 
     #[test]
-    fn test_crypt() {
+    fn matches_unix() {
         assert_eq!("oov2bgybBZ7HI", crypt("foo", "oo"));
+    }
+
+    #[test]
+    fn eight_sig_chars() {
+        assert_eq!(crypt("foofoofo", "oo"), crypt("foofoofoo", "oo"));
     }
 
     #[bench]

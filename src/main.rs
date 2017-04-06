@@ -41,7 +41,8 @@ struct Match {
 fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
     let passwd: String = rand::thread_rng().gen_ascii_chars().take(9).collect();
 
-    let salt: String = passwd.chars()
+    let salt: String = passwd
+        .chars()
         .chain("H.".chars())
         .skip(1)
         .take(2)
@@ -50,13 +51,17 @@ fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
 
     let trip = crypt::crypt(&passwd, &salt);
 
-    pats.find(|p| trip.contains(p.as_str()))
-        .and_then(|_| {
-                      Some(Match {
-                               passwd: passwd,
-                               trip: trip,
-                           })
-                  })
+    if trip.chars().next().unwrap() != '#' {
+        pats.find(|p| trip.contains(p.as_str()))
+            .and_then(|_| {
+                          Some(Match {
+                                   passwd: passwd,
+                                   trip: trip,
+                               })
+                      })
+    } else {
+        None
+    }
 }
 
 fn main() {

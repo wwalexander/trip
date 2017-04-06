@@ -505,7 +505,7 @@ mod tests {
 
     #[test]
     fn matches_unix() {
-        assert_eq!("2bgybBZ7HI", trip("foo"));
+        assert_eq!(trip("foofoofo"), "vctoKCJ4Fk");
     }
 
     #[test]

@@ -9,8 +9,6 @@ use std::thread;
 
 mod trip;
 
-
-
 struct Match {
     passwd: String,
     trip: String,

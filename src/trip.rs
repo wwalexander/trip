@@ -53,7 +53,6 @@
  * by David Burren.  It has been heavily re-worked by Solar Designer.
  */
 
-use std::num::Wrapping;
 use std::str;
 
 struct ExpandedKey {
@@ -351,7 +350,7 @@ pub fn trip(passwd: &str) -> String {
 
     let mut k0 = 0u32;
     let mut k1 = 0u32;
-    let mut ibit = 28usize;
+    let mut ibit = 28;
 
     for i in 0usize..4 {
         let j = i << 1;
@@ -365,7 +364,7 @@ pub fn trip(passwd: &str) -> String {
         k1 |= KEY_PERM_MASKR[j + 1][rawkey0 as usize >> ibit & 0xf] |
               KEY_PERM_MASKR[i + 8][rawkey1 as usize >> ibit & 0xf];
 
-        ibit = (Wrapping(ibit) - Wrapping(4)).0;
+        ibit -= 4;
     }
 
     let mut shifts = 0usize;
@@ -378,7 +377,7 @@ pub fn trip(passwd: &str) -> String {
 
         let mut kl = 0u32;
         let mut kr = 0u32;
-        let mut ibit = 25usize;
+        let mut ibit = 25;
 
         for i in 0usize..4 {
             kl |= COMP_MASKL0[i][t0 as usize >> ibit & 7];
@@ -386,7 +385,7 @@ pub fn trip(passwd: &str) -> String {
             ibit -= 4;
             kl |= COMP_MASKL1[i][t0 as usize >> ibit & 0xf];
             kr |= COMP_MASKR1[i][t1 as usize >> ibit & 0xf];
-            ibit = (Wrapping(ibit) - Wrapping(3)).0;
+            ibit -= 3;
         }
 
         ekey.l[round] = kl;
@@ -478,7 +477,7 @@ pub fn trip(passwd: &str) -> String {
         r1 |= FP_MASKR[i][l as usize >> ibit & 0xf] | FP_MASKR[i + 4][r as usize >> ibit & 0xf];
         ibit -= 4;
         r0 |= FP_MASKL[i][l as usize >> ibit & 0xf] | FP_MASKL[i + 4][r as usize >> ibit & 0xf];
-        ibit = (Wrapping(ibit) - Wrapping(4)).0;
+        ibit -= 4;
     }
 
     let mut output = [0u8; 10];

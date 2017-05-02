@@ -20,12 +20,16 @@ fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
 
     if trip.chars().next().unwrap() != '#' {
         pats.find(|p| trip.contains(p.as_str()))
-            .and_then(|_| {
-                          Some(Match {
-                                   passwd: passwd,
-                                   trip: trip,
-                               })
-                      })
+            .and_then(
+                |_| {
+                    Some(
+                        Match {
+                            passwd: passwd,
+                            trip: trip,
+                        },
+                    )
+                },
+            )
     } else {
         None
     }
@@ -37,13 +41,17 @@ fn main() {
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
 
-    for t in (0..procs).map(|_| {
-                                thread::spawn(move || loop {
-                                                  if let Some(m) = try(env::args()) {
-                                                      println!("#{} => {}", m.passwd, m.trip);
-                                                  }
-                                              })
-                            }) {
+    for t in (0..procs).map(
+        |_| {
+            thread::spawn(
+                move || loop {
+                    if let Some(m) = try(env::args()) {
+                        println!("#{} => {}", m.passwd, m.trip);
+                    }
+                },
+            )
+        },
+    ) {
         t.join().unwrap();
     }
 }

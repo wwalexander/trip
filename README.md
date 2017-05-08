@@ -1,4 +1,4 @@
-[trip 
+trip 
 ====
 
 Finds tripcodes that contain patterns

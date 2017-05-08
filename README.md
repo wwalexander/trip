@@ -1,9 +1,9 @@
-trip 
+[trip 
 ====
 
 Finds tripcodes that contain patterns
 
-![trip's current version badge](https://img.shields.io/crates/v/trip.svg)
+[![trip's current version badge](https://img.shields.io/crates/v/trip.svg)](https://crates.io/crates/trip)
 
 Building
 --------

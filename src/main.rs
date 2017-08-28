@@ -1,39 +1,17 @@
 #![feature(test)]
 
-extern crate test;
 extern crate rand;
+extern crate test;
 
 use rand::Rng;
 use std::env;
+use std::io::{self, Read};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
+use std::time::Instant;
 
 mod trip;
-
-struct Match {
-    passwd: String,
-    trip: String,
-}
-
-fn try<I: Iterator<Item = String>>(mut pats: I) -> Option<Match> {
-    let passwd: String = rand::thread_rng().gen_ascii_chars().take(8).collect();
-    let trip = trip::trip(&passwd);
-
-    if trip.chars().next().unwrap() != '#' {
-        pats.find(|p| trip.contains(p.as_str()))
-            .and_then(
-                |_| {
-                    Some(
-                        Match {
-                            passwd: passwd,
-                            trip: trip,
-                        },
-                    )
-                },
-            )
-    } else {
-        None
-    }
-}
 
 fn main() {
     let procs = env::var("NUMBER_OF_PROCESSORS")
@@ -41,29 +19,46 @@ fn main() {
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
 
-    for t in (0..procs).map(
-        |_| {
-            thread::spawn(
-                move || loop {
-                    if let Some(m) = try(env::args()) {
-                        println!("#{} => {}", m.passwd, m.trip);
+    let abort = Arc::new(AtomicBool::new(false));
+    let now = Instant::now();
+
+    let threads: Vec<_> = (0..procs)
+        .map(|_| abort.clone())
+        .map(|abort| {
+            thread::spawn(move || {
+                let mut count = 0;
+
+                while !abort.load(Ordering::Relaxed) {
+                    let passwd: String = rand::thread_rng().gen_ascii_chars().take(8).collect();
+                    let trip = trip::trip(&passwd);
+
+                    if trip.chars()
+                        .next()
+                        .and_then(|c| if c == '#' {
+                            None
+                        } else {
+                            env::args().find(|a| trip.contains(a.as_str()))
+                        })
+                        .is_some()
+                    {
+                        println!("#{} => {}", passwd, trip);
                     }
-                },
-            )
-        },
-    ) {
-        t.join().unwrap();
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::iter;
-    use test::Bencher;
+                    count += 1;
+                }
 
-    #[bench]
-    fn bench_try(b: &mut Bencher) {
-        b.iter(|| try(iter::once("foo".to_string())))
-    }
+                count
+            })
+        })
+        .collect();
+
+    io::stdin().bytes().next().unwrap().unwrap();
+    abort.store(true, Ordering::Relaxed);
+    let count: u64 = threads.into_iter().map(|t| t.join().unwrap()).sum();
+    let count_per_second = count / now.elapsed().as_secs();
+    println!(
+        "Processed {} tripcodes ({}/second)",
+        count,
+        count_per_second
+    );
 }

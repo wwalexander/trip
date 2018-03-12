@@ -20,4 +20,4 @@ arguments. If a tripcode containing a pattern is found, trip will print the
 password and the tripcode it generates. By default, trip will only use one
 processor. The number of processors to use can be set using the
 NUMBER\_OF\_PROCESSORS environment variable. To stop searching for tripcodes,
-press any key.
+press the Enter key.

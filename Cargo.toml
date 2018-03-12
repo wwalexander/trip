@@ -1,6 +1,6 @@
 [package]
 name = "trip"
-version = "0.1.11"
+version = "0.1.12"
 authors = ["Will Alexander <wwalexander@users.noreply.github.com>"]
 description = "Finds tripcodes that contain patterns"
 repository = "https://github.com/wwalexander/trip"
@@ -9,4 +9,4 @@ categories = ["command-line-utilities", "cryptography"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
-rand = "0.3"
+rand = "0.4"

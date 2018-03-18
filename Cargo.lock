@@ -34,7 +34,7 @@ dependencies = [
 
 [[package]]
 name = "trip"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

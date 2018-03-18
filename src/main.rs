@@ -1,4 +1,7 @@
+#![feature(test)]
+
 extern crate rand;
+extern crate test;
 
 use rand::Rng;
 use std::env;

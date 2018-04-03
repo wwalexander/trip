@@ -54,7 +54,6 @@
  */
 
 use std::num::Wrapping;
-use std::str;
 
 struct ExpandedKey {
     l: [u32; 16],
@@ -1574,10 +1573,10 @@ fn ascii_to_bin(ch: i32) -> u32 {
     retval as u32 & 0x3f
 }
 
-pub fn trip(passwd: &str) -> String {
+pub fn trip(passwd: [u8; 8]) -> [u8; 10] {
     let mut keybuf = [0u8; 8];
 
-    for (i, val) in passwd.bytes().take(keybuf.len()).enumerate() {
+    for (i, val) in passwd.iter().take(keybuf.len()).enumerate() {
         keybuf[i] = val << 1;
     }
 
@@ -1636,12 +1635,12 @@ pub fn trip(passwd: &str) -> String {
         ekey.r[round] = kr;
     }
 
-    let mut salt_chars = passwd.chars().chain("H.".chars()).skip(1).map(|c| match c {
+    let mut salt_chars = passwd.iter().chain(b"H.").skip(1).map(|&c| match c as char {
         '/' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'A' | 'B' | 'C' |
         'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' |
         'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' | 'c' | 'd' | 'e' |
         'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' |
-        't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' => c,
+        't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' => c as char,
         ':' => 'A',
         ';' => 'B',
         '<' => 'C',
@@ -1656,7 +1655,7 @@ pub fn trip(passwd: &str) -> String {
         '_' => 'e',
         '`' => 'f',
         _ => '.',
-    });
+    } as u8);
 
     let setting0 = salt_chars.next().unwrap();
     let setting1 = salt_chars.next().unwrap();
@@ -1734,7 +1733,7 @@ pub fn trip(passwd: &str) -> String {
     output[7] = ASCII64[l >> 12 & 0x3f];
     output[8] = ASCII64[l >> 6 & 0x3f];
     output[9] = ASCII64[l & 0x3f];
-    str::from_utf8(&output).unwrap().to_string()
+    output
 }
 
 #[cfg(test)]
@@ -1742,18 +1741,8 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    #[test]
-    fn matches_unix() {
-        assert_eq!(trip("foofoofo"), "vctoKCJ4Fk");
-    }
-
-    #[test]
-    fn eight_sig_chars() {
-        assert_eq!(trip("foofoofo"), trip("foofoofoo"));
-    }
-
     #[bench]
     fn bench_trip(b: &mut Bencher) {
-        b.iter(|| trip("foofoofo"));
+        b.iter(|| trip(*b"foofoofo"));
     }
 }

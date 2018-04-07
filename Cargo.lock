@@ -49,7 +49,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "trip"
-version = "0.1.13"
+version = "1.0.0"
 dependencies = [
  "rand 0.5.0-pre.0 (git+https://github.com/rust-lang-nursery/rand?tag=0.5.0-pre.0)",
 ]

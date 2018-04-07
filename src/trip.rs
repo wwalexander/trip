@@ -60,6 +60,196 @@ struct ExpandedKey {
     r: [u32; 16],
 }
 
+fn ascii_to_bin(ch: i32) -> u32 {
+    let sch = if ch < 0x80 { ch } else { -(0x100 - ch) };
+
+    let retval = if sch >= 'A' as i32 {
+        if sch >= 'a' as i32 {
+            sch - ('a' as i32 - 38)
+        } else {
+            sch - ('A' as i32 - 12)
+        }
+    } else {
+        sch - '.' as i32
+    };
+
+    retval as u32 & 0x3f
+}
+
+pub fn trip(passwd: [u8; 8]) -> [u8; 10] {
+    let mut keybuf = [0u8; 8];
+
+    for (i, val) in passwd.iter().take(keybuf.len()).enumerate() {
+        keybuf[i] = val << 1;
+    }
+
+    let mut ekey = ExpandedKey {
+        l: [0; 16],
+        r: [0; 16],
+    };
+
+    let rawkey0 = keybuf[3] as u32 | (keybuf[2] as u32) << 8 | (keybuf[1] as u32) << 16 |
+        (keybuf[0] as u32) << 24;
+
+    let rawkey1 = keybuf[7] as u32 | (keybuf[6] as u32) << 8 | (keybuf[5] as u32) << 16 |
+        (keybuf[4] as u32) << 24;
+
+    let mut k0 = 0u32;
+    let mut k1 = 0u32;
+    let mut ibit = 28;
+
+    for i in 0usize..4 {
+        let j = i << 1;
+
+        k0 |= KEY_PERM_MASKL[i][rawkey0 as usize >> ibit & 0xf] |
+            KEY_PERM_MASKL[i + 4][rawkey1 as usize >> ibit & 0xf];
+
+        k1 |= KEY_PERM_MASKR[j][rawkey0 as usize >> ibit & 0xf];
+        ibit -= 4;
+
+        k1 |= KEY_PERM_MASKR[j + 1][rawkey0 as usize >> ibit & 0xf] |
+            KEY_PERM_MASKR[i + 8][rawkey1 as usize >> ibit & 0xf];
+
+        ibit -= 4;
+    }
+
+    let mut shifts = 0usize;
+
+    for round in 0usize..16 {
+        shifts += KEY_SHIFTS[round] as usize;
+
+        let t0 = k0 << shifts | k0 >> 28 - shifts;
+        let t1 = k1 << shifts | k1 >> 28 - shifts;
+
+        let mut kl = 0u32;
+        let mut kr = 0u32;
+        let mut ibit = 25;
+
+        for i in 0usize..4 {
+            kl |= COMP_MASKL0[i][t0 as usize >> ibit & 7];
+            kr |= COMP_MASKR0[i][t1 as usize >> ibit & 7];
+            ibit -= 4;
+            kl |= COMP_MASKL1[i][t0 as usize >> ibit & 0xf];
+            kr |= COMP_MASKR1[i][t1 as usize >> ibit & 0xf];
+            ibit -= 3;
+        }
+
+        ekey.l[round] = kl;
+        ekey.r[round] = kr;
+    }
+
+    let mut salt_chars = passwd.iter().chain(b"H.").skip(1).map(|&c| match c as char {
+        '/' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'A' | 'B' | 'C' |
+        'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' |
+        'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' | 'c' | 'd' | 'e' |
+        'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' |
+        't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' => c as char,
+        ':' => 'A',
+        ';' => 'B',
+        '<' => 'C',
+        '=' => 'D',
+        '>' => 'E',
+        '?' => 'F',
+        '@' => 'G',
+        '[' => 'a',
+        '\\' => 'b',
+        ']' => 'c',
+        '^' => 'd',
+        '_' => 'e',
+        '`' => 'f',
+        _ => '.',
+    } as u8);
+
+    let setting0 = salt_chars.next().unwrap();
+    let setting1 = salt_chars.next().unwrap();
+    let salt = ascii_to_bin(setting1 as i32) << 6 | ascii_to_bin(setting0 as i32);
+    let mut saltbits = 0u32;
+    let mut saltbit = 1u32;
+    let mut obit = 0x800000;
+
+    for _ in 0..24 {
+        if salt & saltbit != 0 {
+            saltbits |= obit;
+        }
+
+        saltbit <<= 1;
+        obit >>= 1;
+    }
+
+    let mut l = 0u32;
+    let mut r = 0u32;
+
+    for _ in 0..25 {
+        let mut f = 0u32;
+
+        for (kl, kr) in ekey.l.iter().zip(ekey.r.iter()) {
+            let mut r48l = (r & 0x00000001) << 23 | (r & 0xf8000000) >> 9 |
+                (r & 0x1f800000) >> 11 | (r & 0x01f80000) >> 13 |
+                (r & 0x001f8000) >> 15;
+
+            let mut r48r = (r & 0x0001f800) << 7 | (r & 0x00001f80) << 5 |
+                (r & 0x000001f8) << 3 | (r & 0x0000001f) << 1 |
+                (r & 0x80000000) >> 31;
+
+            f = (r48l ^ r48r) & saltbits;
+            r48l ^= f ^ kl;
+            r48r ^= f ^ kr;
+
+            f = PSBOX[0][r48l as usize >> 18] | PSBOX[1][r48l as usize >> 12 & 0x3f] |
+                PSBOX[2][r48l as usize >> 6 & 0x3f] |
+                PSBOX[3][r48l as usize & 0x3f] | PSBOX[4][r48r as usize >> 18] |
+                PSBOX[5][r48r as usize >> 12 & 0x3f] |
+                PSBOX[6][r48r as usize >> 6 & 0x3f] |
+                PSBOX[7][r48r as usize & 0x3f];
+
+            f ^= l;
+            l = r;
+            r = f;
+        }
+
+        r = l;
+        l = f;
+    }
+
+    let mut ibit = 28usize;
+    let mut r0 = 0u32;
+    let mut r1 = 0u32;
+
+    for i in 0usize..4 {
+        r1 |= FP_MASKR[i][l as usize >> ibit & 0xf] | FP_MASKR[i + 4][r as usize >> ibit & 0xf];
+        ibit -= 4;
+        r0 |= FP_MASKL[i][l as usize >> ibit & 0xf] | FP_MASKL[i + 4][r as usize >> ibit & 0xf];
+        ibit = (Wrapping(ibit) - Wrapping(4)).0;
+    }
+
+    let mut output = [0u8; 10];
+    let l = (r0 as usize) >> 8;
+    output[0] = ASCII64[l >> 12 & 0x3f];
+    output[1] = ASCII64[l >> 6 & 0x3f];
+    output[2] = ASCII64[l & 0x3f];
+    let l = ((r0 as usize) << 16) | ((r1 as usize) >> 16 & 0xffff);
+    output[3] = ASCII64[l >> 18 & 0x3f];
+    output[4] = ASCII64[l >> 12 & 0x3f];
+    output[5] = ASCII64[l >> 6 & 0x3f];
+    output[6] = ASCII64[l & 0x3f];
+    let l = (r1 as usize) << 2;
+    output[7] = ASCII64[l >> 12 & 0x3f];
+    output[8] = ASCII64[l >> 6 & 0x3f];
+    output[9] = ASCII64[l & 0x3f];
+    output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_trip(b: &mut Bencher) {
+        b.iter(|| trip(*b"foofoofo"));
+    }
+}
+
 const KEY_SHIFTS: [u8; 16] = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1];
 
 const PSBOX: [[u32; 64]; 8] = [
@@ -1556,193 +1746,3 @@ const ASCII64: [u8; 64] = [
     0x79,
     0x7a,
 ];
-
-fn ascii_to_bin(ch: i32) -> u32 {
-    let sch = if ch < 0x80 { ch } else { -(0x100 - ch) };
-
-    let retval = if sch >= 'A' as i32 {
-        if sch >= 'a' as i32 {
-            sch - ('a' as i32 - 38)
-        } else {
-            sch - ('A' as i32 - 12)
-        }
-    } else {
-        sch - '.' as i32
-    };
-
-    retval as u32 & 0x3f
-}
-
-pub fn trip(passwd: [u8; 8]) -> [u8; 10] {
-    let mut keybuf = [0u8; 8];
-
-    for (i, val) in passwd.iter().take(keybuf.len()).enumerate() {
-        keybuf[i] = val << 1;
-    }
-
-    let mut ekey = ExpandedKey {
-        l: [0; 16],
-        r: [0; 16],
-    };
-
-    let rawkey0 = keybuf[3] as u32 | (keybuf[2] as u32) << 8 | (keybuf[1] as u32) << 16 |
-        (keybuf[0] as u32) << 24;
-
-    let rawkey1 = keybuf[7] as u32 | (keybuf[6] as u32) << 8 | (keybuf[5] as u32) << 16 |
-        (keybuf[4] as u32) << 24;
-
-    let mut k0 = 0u32;
-    let mut k1 = 0u32;
-    let mut ibit = 28;
-
-    for i in 0usize..4 {
-        let j = i << 1;
-
-        k0 |= KEY_PERM_MASKL[i][rawkey0 as usize >> ibit & 0xf] |
-            KEY_PERM_MASKL[i + 4][rawkey1 as usize >> ibit & 0xf];
-
-        k1 |= KEY_PERM_MASKR[j][rawkey0 as usize >> ibit & 0xf];
-        ibit -= 4;
-
-        k1 |= KEY_PERM_MASKR[j + 1][rawkey0 as usize >> ibit & 0xf] |
-            KEY_PERM_MASKR[i + 8][rawkey1 as usize >> ibit & 0xf];
-
-        ibit -= 4;
-    }
-
-    let mut shifts = 0usize;
-
-    for round in 0usize..16 {
-        shifts += KEY_SHIFTS[round] as usize;
-
-        let t0 = k0 << shifts | k0 >> 28 - shifts;
-        let t1 = k1 << shifts | k1 >> 28 - shifts;
-
-        let mut kl = 0u32;
-        let mut kr = 0u32;
-        let mut ibit = 25;
-
-        for i in 0usize..4 {
-            kl |= COMP_MASKL0[i][t0 as usize >> ibit & 7];
-            kr |= COMP_MASKR0[i][t1 as usize >> ibit & 7];
-            ibit -= 4;
-            kl |= COMP_MASKL1[i][t0 as usize >> ibit & 0xf];
-            kr |= COMP_MASKR1[i][t1 as usize >> ibit & 0xf];
-            ibit -= 3;
-        }
-
-        ekey.l[round] = kl;
-        ekey.r[round] = kr;
-    }
-
-    let mut salt_chars = passwd.iter().chain(b"H.").skip(1).map(|&c| match c as char {
-        '/' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'A' | 'B' | 'C' |
-        'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' |
-        'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' | 'c' | 'd' | 'e' |
-        'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' |
-        't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' => c as char,
-        ':' => 'A',
-        ';' => 'B',
-        '<' => 'C',
-        '=' => 'D',
-        '>' => 'E',
-        '?' => 'F',
-        '@' => 'G',
-        '[' => 'a',
-        '\\' => 'b',
-        ']' => 'c',
-        '^' => 'd',
-        '_' => 'e',
-        '`' => 'f',
-        _ => '.',
-    } as u8);
-
-    let setting0 = salt_chars.next().unwrap();
-    let setting1 = salt_chars.next().unwrap();
-    let salt = ascii_to_bin(setting1 as i32) << 6 | ascii_to_bin(setting0 as i32);
-    let mut saltbits = 0u32;
-    let mut saltbit = 1u32;
-    let mut obit = 0x800000;
-
-    for _ in 0..24 {
-        if salt & saltbit != 0 {
-            saltbits |= obit;
-        }
-
-        saltbit <<= 1;
-        obit >>= 1;
-    }
-
-    let mut l = 0u32;
-    let mut r = 0u32;
-
-    for _ in 0..25 {
-        let mut f = 0u32;
-
-        for (kl, kr) in ekey.l.iter().zip(ekey.r.iter()) {
-            let mut r48l = (r & 0x00000001) << 23 | (r & 0xf8000000) >> 9 |
-                (r & 0x1f800000) >> 11 | (r & 0x01f80000) >> 13 |
-                (r & 0x001f8000) >> 15;
-
-            let mut r48r = (r & 0x0001f800) << 7 | (r & 0x00001f80) << 5 |
-                (r & 0x000001f8) << 3 | (r & 0x0000001f) << 1 |
-                (r & 0x80000000) >> 31;
-
-            f = (r48l ^ r48r) & saltbits;
-            r48l ^= f ^ kl;
-            r48r ^= f ^ kr;
-
-            f = PSBOX[0][r48l as usize >> 18] | PSBOX[1][r48l as usize >> 12 & 0x3f] |
-                PSBOX[2][r48l as usize >> 6 & 0x3f] |
-                PSBOX[3][r48l as usize & 0x3f] | PSBOX[4][r48r as usize >> 18] |
-                PSBOX[5][r48r as usize >> 12 & 0x3f] |
-                PSBOX[6][r48r as usize >> 6 & 0x3f] |
-                PSBOX[7][r48r as usize & 0x3f];
-
-            f ^= l;
-            l = r;
-            r = f;
-        }
-
-        r = l;
-        l = f;
-    }
-
-    let mut ibit = 28usize;
-    let mut r0 = 0u32;
-    let mut r1 = 0u32;
-
-    for i in 0usize..4 {
-        r1 |= FP_MASKR[i][l as usize >> ibit & 0xf] | FP_MASKR[i + 4][r as usize >> ibit & 0xf];
-        ibit -= 4;
-        r0 |= FP_MASKL[i][l as usize >> ibit & 0xf] | FP_MASKL[i + 4][r as usize >> ibit & 0xf];
-        ibit = (Wrapping(ibit) - Wrapping(4)).0;
-    }
-
-    let mut output = [0u8; 10];
-    let l = (r0 as usize) >> 8;
-    output[0] = ASCII64[l >> 12 & 0x3f];
-    output[1] = ASCII64[l >> 6 & 0x3f];
-    output[2] = ASCII64[l & 0x3f];
-    let l = ((r0 as usize) << 16) | ((r1 as usize) >> 16 & 0xffff);
-    output[3] = ASCII64[l >> 18 & 0x3f];
-    output[4] = ASCII64[l >> 12 & 0x3f];
-    output[5] = ASCII64[l >> 6 & 0x3f];
-    output[6] = ASCII64[l & 0x3f];
-    let l = (r1 as usize) << 2;
-    output[7] = ASCII64[l >> 12 & 0x3f];
-    output[8] = ASCII64[l >> 6 & 0x3f];
-    output[9] = ASCII64[l & 0x3f];
-    output
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use test::Bencher;
-
-    #[bench]
-    fn bench_trip(b: &mut Bencher) {
-        b.iter(|| trip(*b"foofoofo"));
-    }
-}

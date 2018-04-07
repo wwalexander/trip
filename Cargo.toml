@@ -1,7 +1,12 @@
 [package]
 name = "trip"
-version = "0.1.0"
-authors = ["Will Alexander <willwalexander@icloud.com>"]
+version = "0.1.13"
+authors = ["Will Alexander <wwalexander@users.noreply.github.com>"]
+description = "Finds tripcodes that contain patterns"
+repository = "https://github.com/wwalexander/trip"
+readme = "README.md"
+categories = ["command-line-utilities", "cryptography"]
+license = "MIT/Apache-2.0"
 
 [dependencies]
 rand = { git = "https://github.com/rust-lang-nursery/rand" }

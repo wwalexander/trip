@@ -8,5 +8,6 @@ readme = "README.md"
 categories = ["command-line-utilities", "cryptography"]
 license = "MIT/Apache-2.0"
 
-[dependencies]
-rand = { git = "https://github.com/rust-lang-nursery/rand" }
+[dependencies.rand]
+git = "https://github.com/rust-lang-nursery/rand"
+tag = "0.5.0-pre.0"
